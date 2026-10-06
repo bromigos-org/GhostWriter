@@ -61,6 +61,12 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 
+# GhostWriter runtime databases (hold encrypted OAuth tokens; never commit)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
 # Flask stuff:
 instance/
 .webassets-cache
