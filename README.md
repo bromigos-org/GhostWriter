@@ -1,5 +1,12 @@
 # GhostWriter
 
+> **Status: inactive since August 2025.** GhostWriter was an early prototype of a
+> unified inbox. Only SMS intake (via TextBee) and priority classification were
+> built; the other platforms listed below were never implemented, and the last CI
+> runs (2025-08-22) failed. Nothing deploys or depends on this code (checked
+> 2026-10-05). The bromigos.org homepage still lists it as "In dev" and links
+> here. The repo is a candidate for archiving.
+
 GhostWriter is a powerful tool for creating and managing a unified collection of messaging applications. It provides a set of automated action items, based on priority and context, across multiple communication platforms.
 
 ## 🚀 Supported Applications
