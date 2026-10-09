@@ -2,7 +2,7 @@
 name = "ghostwriter"
 version = "0.1.0"
 description = "Unified messaging application manager with intelligent processing"
-authors = [{ name = "Nick L.", email = "lesseosnick@gmail.com" }]
+authors = [{ name = "Bromigos", email = "contact@bromigos.org" }]
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
