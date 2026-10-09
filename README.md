@@ -1,188 +1,204 @@
 # GhostWriter
 
-> **Status: inactive since August 2025.** GhostWriter was an early prototype of a
-> unified inbox. Only SMS intake (via TextBee) and priority classification were
-> built; the other platforms listed below were never implemented, and the last CI
-> runs (2025-08-22) failed. Nothing deploys or depends on this code (checked
-> 2026-10-05). The bromigos.org homepage still lists it as "In dev" and links
-> here. The repo is a candidate for archiving.
+[![CI](https://github.com/bromigos-org/GhostWriter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/bromigos-org/GhostWriter/actions/workflows/ci.yml)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)](pyproject.toml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+![Status: inactive](https://img.shields.io/badge/status-inactive-lightgrey)
 
-GhostWriter is a powerful tool for creating and managing a unified collection of messaging applications. It provides a set of automated action items, based on priority and context, across multiple communication platforms.
+GhostWriter is a prototype of a unified inbox. It pulls in messages from your
+messaging apps, scores how urgent each one is, and tags what it is about. The
+goal was one place to triage Slack, email, Discord, Telegram and SMS.
 
-## 🚀 Supported Applications
+> **Status: inactive since August 2025.** Only SMS intake and priority scoring
+> were built. Discord intake is experimental. Slack, Gmail, Outlook and
+> Telegram were never started. Nothing deploys or depends on this code. The
+> repo is a candidate for archiving.
 
-- **Slack** - Team collaboration and messaging
-- **Gmail** - Email communication
-- **Outlook** - Microsoft email and calendar
-- **Discord** - Gaming and community chat
-- **Telegram** - Secure messaging
-- **SMS** - Text messaging
+## What works today
 
-## 📋 Functional Requirements
+| Feature | State |
+|---|---|
+| SMS intake through [TextBee](https://textbee.dev) | Works |
+| Priority scoring and context tags | Works |
+| SMS sending through TextBee | Built into the SMS client, but nothing calls it |
+| Discord intake through OAuth | Experimental. See [Discord](#discord-experimental). |
+| Slack, Gmail, Outlook and Telegram | Not started |
+| Summaries, AI replies and auto-replies | Not started |
 
-- [x] Receive messages from SMS platform (TextBee integration)
-- [x] Queue and process messages efficiently
-- [x] Identify and set message priorities
-- [ ] Receive messages from other supported applications
-- [ ] Generate intelligent summaries of message content
-- [ ] Generate contextual responses to messages
-- [ ] Automate responses based on priority thresholds
+## How it works
 
-## ⚡ Non-Functional Requirements
+```mermaid
+flowchart LR
+    Phone[Android phone running TextBee] --> TextBee[TextBee API]
+    TextBee -->|polled every 10 s| SMS[SMS platform]
+    SMS --> Processor[Priority and tag rules]
+    Processor --> Console[Console output]
+```
 
-- [x] Message priority classification system
-- [x] Conversation priority management
-- [x] Configurable response priority thresholds
-- [x] Scalable message processing architecture
-- [ ] Secure authentication and data handling
+GhostWriter runs as a console app.
 
-## 🎯 Core Features (v1.0)
+1. It polls each enabled platform for new messages.
+2. It converts every message to one shared `UnifiedMessage` model.
+3. It scores the message's priority and tags its content.
+4. It prints the result. High and urgent messages get a highlighted summary.
 
-### Message Reception & Processing ✅ **SMS IMPLEMENTED**
+It skips messages it has already seen during the current run. It stores
+nothing about SMS messages, so a restart sees old messages again.
 
-- [x] **Receive SMS messages via TextBee**
-- [x] **Queue messages for processing**
-- [x] **Process messages in queue**
-- [ ] Receive messages from Slack
-- [ ] Receive messages from Discord
-- [ ] Receive messages from Gmail
+### Priority rules
 
-### Intelligence & Automation ✅ **PRIORITY SYSTEM IMPLEMENTED**
+Scoring uses keyword rules, not a language model. The rules live in
+`src/ghostwriter/processor.py`. The first rule that matches wins.
 
-- [x] **Identify priority level of messages**
-- [x] **Advanced priority classification with urgency scoring**
-- [x] **Context tag extraction (financial, meeting, security, etc.)**
-- [x] **Time-based urgency adjustments**
-- [ ] Generate contextual responses based on service and message context
-- [ ] Reply to messages below configurable priority levels
-- [ ] Generate comprehensive message summaries
-- [ ] Create calendar events from messages when appropriate
+1. **Urgent.** The message contains a word like "urgent", "asap", "emergency",
+   "help", "problem", "error" or "down".
+2. **High.** The message contains a word like "important", "deadline",
+   "meeting", "call", "review", "payment" or "invoice".
+3. **Low.** The message contains a word like "fyi", "update", "newsletter",
+   "reminder" or "digest".
+4. **Everything else** starts at a score of 0.5, which is medium. Then:
+   - An SMS shorter than 50 characters gains 0.1.
+   - An SMS from a number not in your contacts loses 0.1. There is no contact
+     list yet, so every number counts as unknown.
+   - A message sent before 8 AM or after 6 PM gains 0.1.
 
-### Message Distribution
+   A score of 0.8 or more is urgent. A score of 0.6 or more is high. A score
+   of 0.3 or less is low.
 
-- [x] **Send SMS messages via TextBee**
-- [ ] Send messages to Slack
-- [ ] Send messages to Discord
-- [ ] Send messages to Gmail
+### Context tags
 
-## 🔮 Future Features
+Every message gets a `platform:<name>` tag. It can also get these tags.
 
-- [ ] Create tasks from messages when appropriate
-- [ ] Create notes from messages when appropriate
-- [ ] Create contacts from messages when appropriate
-- [ ] Create emails from messages when appropriate
-- [ ] Advanced natural language processing for better context understanding
-- [ ] Integration with project management tools
-- [ ] Custom workflow automation rules
-- [ ] Analytics and reporting dashboard
+| Tag | Added when the message mentions |
+|---|---|
+| `meeting` | meeting, call, zoom, teams |
+| `financial` | payment, invoice, bill, charge |
+| `security` | password, login, security, account |
+| `delivery` | delivery, package, shipped, tracking |
+| `time-sensitive` | today, tomorrow, asap, urgent |
+| `contains-link` | a URL |
+| `contains-phone` | a phone number |
 
-## 🛠️ Getting Started
+## Run it
 
-### Prerequisites
+You need:
 
-- Python 3.12 or higher
-- Poetry (for dependency management)
-- TextBee account and Android device for SMS integration
+- Python 3.12 or later.
+- [Poetry](https://python-poetry.org) 2.
+- A [TextBee](https://textbee.dev) account and an Android phone with the
+  TextBee app.
 
-### Installation
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/bromigos-org/GhostWriter.git
-   cd GhostWriter
-   ```
-
-2. Install dependencies:
-   ```bash
-   poetry install
-   ```
-
-3. Set up configuration:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your TextBee API credentials
-   ```
-
-4. Activate the virtual environment:
-   ```bash
-   poetry shell
-   ```
-
-### TextBee SMS Setup
-
-1. **Create TextBee Account**: Sign up at [textbee.dev](https://textbee.dev)
-2. **Install Android App**: Download from [dl.textbee.dev](https://dl.textbee.dev)
-3. **Connect Device**: Use QR code or manual API key entry
-4. **Configure GhostWriter**: Add your API key and device ID to `.env`
-
-### Running GhostWriter
+Clone the repo and install it.
 
 ```bash
-# Run the application
+git clone https://github.com/bromigos-org/GhostWriter.git
+cd GhostWriter
+poetry install
+```
+
+Connect your phone to TextBee.
+
+1. Sign up at [textbee.dev](https://textbee.dev).
+2. Install the TextBee app from [dl.textbee.dev](https://dl.textbee.dev) and
+   grant it SMS permissions.
+3. In the TextBee dashboard, click **Register Device** and scan the QR code
+   with the app.
+4. Copy your API key and device ID from the dashboard.
+
+Create your settings file and add the key and device ID.
+
+```bash
+cp .env.example .env
+```
+
+Start GhostWriter.
+
+```bash
 poetry run ghostwriter
-
-# Or run directly
-poetry run python -m ghostwriter.main
 ```
 
-### Current Implementation Status
+It prints `GhostRider is running. Press Ctrl+C to stop.` and then logs each new
+SMS as it arrives. The console says "GhostRider", the project's earlier name.
+Press Ctrl+C to stop it.
 
-🎉 **WORKING FEATURES:**
-- ✅ **SMS Integration**: Full TextBee SMS platform integration
-- ✅ **Message Processing**: Asynchronous message queue processing with proper shutdown handling
-- ✅ **Priority Classification**: AI-powered priority scoring with urgency levels
-- ✅ **Context Analysis**: Automatic tag extraction (financial, security, meeting, etc.)
-- ✅ **Real-time Monitoring**: Configurable polling intervals
-- ✅ **Error Handling**: Robust error handling and retry logic
-- ✅ **Development Tools**: Ruff linting, MyPy type checking, and pre-commit hooks
-- ✅ **Signal Handling**: Graceful shutdown on SIGINT/SIGTERM
+## Configure it
 
-📱 **SMS Features:**
+GhostWriter reads settings from the environment and from `.env`. See
+`.env.example` for every setting. Nested settings use a double underscore, such
+as `SMS__POLLING_INTERVAL`.
 
-- Receive SMS messages in real-time
-- Send SMS replies through your Android device
-- Priority scoring based on content, time, and context
-- Deduplication to prevent processing the same message twice
-- Context tags for financial, security, meeting-related messages
+| Variable | Default | Purpose |
+|---|---|---|
+| `TEXTBEE_API_KEY` | none | TextBee API key. SMS is turned off without it. |
+| `TEXTBEE_DEVICE_ID` | none | TextBee device ID. SMS is turned off without it. |
+| `SMS__ENABLED` | `true` | Turns SMS intake on or off. |
+| `SMS__POLLING_INTERVAL` | `10` | Seconds between TextBee polls. |
+| `DISCORD__ENABLED` | `false` | Turns on the experimental Discord platform. |
+| `DISCORD__CLIENT_ID` | none | Discord OAuth app client ID. |
+| `DISCORD__CLIENT_SECRET` | none | Discord OAuth app client secret. |
+| `DISCORD__REDIRECT_URI` | `http://localhost:8080/callback` | OAuth redirect URI. |
+| `DISCORD__ENCRYPTION_KEY` | generated per run | Fernet key that encrypts stored Discord tokens. |
+| `DISCORD__DB_PATH` | `ghostwriter.db` | SQLite file for Discord tokens and messages. |
+| `PROCESSING__PROCESSING_INTERVAL` | `5` | Seconds between polls for platforms without their own interval. |
 
-### Development
+`.env.example` also lists Slack, Gmail and other processing settings. The code
+reads them, but no feature uses them yet.
+
+### Discord (experimental)
+
+The Discord platform signs in as a Discord user through OAuth. It then reads
+the latest messages from that user's channels. It stores tokens, encrypted,
+in a local SQLite file.
+
+The main app never runs the sign-in step, so it reads nothing from Discord on
+its own. The scripts `test_discord.py` and `test_discord_with_callback.py` at
+the repo root walk through the OAuth flow by hand. The second one opens your
+browser and listens on port 8080 for the callback.
+
+Set `DISCORD__ENCRYPTION_KEY` if you want stored tokens to survive a restart.
+Without it, each run makes a new key and cannot read old tokens.
+
+## Test and lint
 
 ```bash
-# Install development dependencies
 poetry install --with dev
-
-# Code quality checks
-poetry run ruff check src tests          # Linting
-poetry run ruff format src tests         # Formatting
-poetry run mypy src                      # Type checking
-
-# Run all quality checks
-poetry run ruff check src tests && poetry run ruff format --check src tests && poetry run mypy src
-
-# Pre-commit hooks (one-time setup)
-poetry run pre-commit install
-
-# Run pre-commit manually
-poetry run pre-commit run --all-files
-
-# Run tests (when implemented)
-poetry run pytest
-
-# Add new dependencies
-poetry add package_name
-
-# Add development dependencies
-poetry add --group dev package_name
+poetry run pytest tests/test_main.py tests/test_simple.py
+poetry run ruff check src tests
+poetry run ruff format --check src tests
+poetry run mypy src
 ```
 
-## 📄 License
+CI runs exactly these checks on Python 3.12 and 3.13. See
+`.github/workflows/ci.yml`. CI is currently red because
+`src/ghostwriter/database/manager.py` needs `ruff format`.
 
-This project is licensed under the terms specified in the [LICENSE](LICENSE) file.
+The other test files are out of date. `tests/test_message_processor.py` and
+`tests/test_sms_integration.py` have failing tests. `tests/test_integration.py`
+fails to import.
 
-## 🤝 Contributing
+To run the same checks before each commit, install the pre-commit hooks.
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+```bash
+poetry run pre-commit install
+```
 
----
+## Project layout
 
-**GhostWriter** - Unifying your messaging experience across platforms.
+| Path | Contents |
+|---|---|
+| `src/ghostwriter/main.py` | Entry point for the `ghostwriter` command. |
+| `src/ghostwriter/core.py` | Starts platforms, polls them and hands messages to the processor. |
+| `src/ghostwriter/processor.py` | Priority rules and context tags. |
+| `src/ghostwriter/models.py` | The shared message models. |
+| `src/ghostwriter/config.py` | Loads settings from the environment. |
+| `src/ghostwriter/platforms/` | The SMS and Discord platform clients. |
+| `src/ghostwriter/database/` | SQLite storage for the Discord platform. |
+
+## Contributing
+
+The project is inactive, so pull requests may not get a review. If you want to
+pick it up, open an issue first.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

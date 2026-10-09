@@ -20,12 +20,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-GhostWriter is a unified messaging application manager that processes messages across multiple platforms (Slack, Gmail, Outlook, Discord, Telegram, SMS). The system generates intelligent summaries, contextual responses, and automated actions based on message priority and context.
+GhostWriter is a prototype unified inbox. The goal was to triage messages from Slack, Gmail, Outlook, Discord, Telegram and SMS in one place. It has been inactive since August 2025. Only SMS intake (TextBee) and keyword-based priority scoring are built. Discord intake is experimental. README.md has the full feature status.
 
 ## Architecture
 
 - **Core Module**: `src/ghostwriter/` contains the main application logic
-- **Entry Point**: `src/ghostwriter/main.py:main()` - currently a placeholder that prints startup message
+- **Entry Point**: `src/ghostwriter/main.py:main()` starts `GhostRiderApp` from `core.py`, which polls each enabled platform and passes messages to `processor.py`
+- **Platforms**: `src/ghostwriter/platforms/` holds the TextBee SMS client and the experimental Discord OAuth client
+- **Storage**: `src/ghostwriter/database/` is SQLite storage used only by the Discord platform
 - **Package Structure**: Standard Python package with Poetry for dependency management
 
 ## Development Commands
@@ -53,12 +55,14 @@ poetry run python -m ghostwriter.main
 ### Testing
 
 ```bash
-# Run tests (when implemented)
-poetry run pytest
+# The tests CI runs
+poetry run pytest tests/test_main.py tests/test_simple.py
 
-# Run tests with coverage (when implemented)
-poetry run pytest --cov=ghostwriter
+# With coverage
+poetry run pytest tests/test_main.py tests/test_simple.py --cov=ghostwriter
 ```
+
+The other test files are stale. `tests/test_message_processor.py` and `tests/test_sms_integration.py` have failing tests, and `tests/test_integration.py` fails to import.
 
 ### Development Tools
 
@@ -137,10 +141,10 @@ poetry run ghostwriter
 ### SMS Features
 
 - **Real-time SMS Reception**: Polls TextBee API for new messages every 10 seconds
-- **SMS Sending**: Send replies through your Pixel phone
+- **SMS Sending**: The SMS client can send through your Pixel phone, but nothing in the app calls it yet
 - **Priority Classification**: Automatic urgency scoring for SMS messages
 - **Context Analysis**: Extract tags like 'financial', 'meeting', 'security' from SMS content
-- **Deduplication**: Prevents processing the same SMS multiple times
+- **Deduplication**: Skips SMS already seen during the current run (in memory only)
 
 ### SMS Priority Rules
 
@@ -149,10 +153,12 @@ poetry run ghostwriter
 - **Medium**: Default priority for regular messages
 - **Low**: Keywords like 'fyi', 'newsletter', 'update'
 
-Additional factors:
+Additional factors apply only when no keyword matched:
 - Short SMS messages (< 50 chars) get higher urgency
+- SMS from unknown numbers get lower urgency (there is no contact list yet, so every number is unknown)
 - Messages outside business hours (8 AM - 6 PM) get urgency boost
-- Messages with URLs, phone numbers get special context tags
+
+Messages with URLs or phone numbers get context tags, whatever their priority.
 
 ### Troubleshooting SMS
 
@@ -175,7 +181,7 @@ Additional factors:
 
 Based on the README requirements, the system needs to implement:
 
-1. **Message Reception Layer**: ✅ SMS (TextBee), Slack, Discord, Gmail integrations
+1. **Message Reception Layer**: ✅ SMS (TextBee); Discord OAuth is experimental; Slack and Gmail are TODO
 2. **Processing Queue**: ✅ Asynchronous message processing system
 3. **Intelligence Engine**: ✅ Priority classification and context analysis
 4. **Response Generation**: AI-powered contextual responses (TODO)
@@ -183,11 +189,8 @@ Based on the README requirements, the system needs to implement:
 
 ## Current State
 
-The project is in early initialization phase with:
+Inactive since August 2025 and a candidate for archiving. Nothing deploys or depends on this code.
 
-- Basic Poetry project structure
-- Placeholder main entry point
-- No external dependencies yet
-- Extensive feature roadmap defined in README.md
-
-The codebase is currently minimal and ready for core feature development.
+- SMS intake and priority scoring work end to end.
+- CI is red: `ruff format --check` wants to reformat `src/ghostwriter/database/manager.py`.
+- The console output still uses the project's earlier name, GhostRider.
