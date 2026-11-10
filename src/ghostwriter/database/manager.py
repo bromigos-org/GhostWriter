@@ -120,13 +120,16 @@ class DatabaseManager:
 
     async def get_discord_token(self, user_id: str) -> DiscordToken | None:
         """Retrieve Discord OAuth token."""
-        async with aiosqlite.connect(self.db_path) as db, db.execute(
-            """
+        async with (
+            aiosqlite.connect(self.db_path) as db,
+            db.execute(
+                """
             SELECT user_id, access_token, refresh_token, expires_at, scope, created_at, updated_at
             FROM discord_tokens WHERE user_id = ?
         """,
-            (user_id,),
-        ) as cursor:
+                (user_id,),
+            ) as cursor,
+        ):
             row = await cursor.fetchone()
             if not row:
                 return None
@@ -165,13 +168,16 @@ class DatabaseManager:
 
     async def get_discord_channels(self) -> list[DiscordChannel]:
         """Get all Discord channels."""
-        async with aiosqlite.connect(self.db_path) as db, db.execute(
-            """
+        async with (
+            aiosqlite.connect(self.db_path) as db,
+            db.execute(
+                """
             SELECT channel_id, name, channel_type, recipient_ids, guild_id, last_fetched, created_at, updated_at
             FROM discord_channels
             ORDER BY updated_at DESC
         """
-        ) as cursor:
+            ) as cursor,
+        ):
             rows = await cursor.fetchall()
             channels = []
             for row in rows:
@@ -223,8 +229,10 @@ class DatabaseManager:
 
     async def get_discord_messages(self, channel_id: str, limit: int = 50) -> list[DiscordMessage]:
         """Get Discord messages for a channel."""
-        async with aiosqlite.connect(self.db_path) as db, db.execute(
-            """
+        async with (
+            aiosqlite.connect(self.db_path) as db,
+            db.execute(
+                """
             SELECT message_id, channel_id, author_id, author_name, author_avatar, content, timestamp,
                    edited_timestamp, message_type, attachments, embeds, mentions, reply_to, raw_data,
                    processed, created_at
@@ -233,8 +241,9 @@ class DatabaseManager:
             ORDER BY timestamp DESC
             LIMIT ?
         """,
-            (channel_id, limit),
-        ) as cursor:
+                (channel_id, limit),
+            ) as cursor,
+        ):
             rows = await cursor.fetchall()
             messages = []
             for row in rows:
