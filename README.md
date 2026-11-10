@@ -169,8 +169,7 @@ poetry run mypy src
 ```
 
 CI runs exactly these checks on Python 3.12 and 3.13. See
-`.github/workflows/ci.yml`. CI is currently red because
-`src/ghostwriter/database/manager.py` needs `ruff format`.
+`.github/workflows/ci.yml`.
 
 The other test files are out of date. `tests/test_message_processor.py` and
 `tests/test_sms_integration.py` have failing tests. `tests/test_integration.py`
